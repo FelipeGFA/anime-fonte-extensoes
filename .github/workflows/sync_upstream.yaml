@@ -1,0 +1,68 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Executa a cada 6 horas
+  workflow_dispatch:  # Permite execução manual
+
+permissions: {}
+
+jobs:
+  sync-branch:
+    name: Sync branch with upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout sync branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: sync
+          fetch-depth: 0
+          token: ${{ secrets.BOT_PAT }}
+          persist-credentials: true
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/Kohi-den/extensions-source.git || true
+          git fetch upstream main
+
+      - name: Reset sync to upstream/main
+        run: |
+          git reset --hard upstream/main
+          git push origin sync --force
+
+  rebase-main:
+    name: Rebase main on sync
+    needs: sync-branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.BOT_PAT }}
+          persist-credentials: true
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch sync branch
+        run: git fetch origin sync
+
+      - name: Rebase main on sync
+        run: |
+          git rebase origin/sync
+          git push origin main --force-with-lease
