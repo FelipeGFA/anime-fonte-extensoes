@@ -10,9 +10,7 @@ VERSION_CODE_REGEX = re.compile(r"versionCode='([^']+)'")
 VERSION_NAME_REGEX = re.compile(r"versionName='([^']+)'")
 IS_NSFW_REGEX = re.compile(r"'tachiyomi.animeextension.nsfw' value='([^']+)'")
 APPLICATION_LABEL_REGEX = re.compile(r"^application-label:'([^']+)'", re.MULTILINE)
-APPLICATION_ICON_320_REGEX = re.compile(
-    r"^application-icon-320:'([^']+)'", re.MULTILINE
-)
+APPLICATION_ICON_320_REGEX = re.compile(r"^application-icon-320:'([^']+)'", re.MULTILINE)
 LANGUAGE_REGEX = re.compile(r"aniyomi-([^\.]+)")
 
 *_, ANDROID_BUILD_TOOLS = (Path(os.environ["ANDROID_HOME"]) / "build-tools").iterdir()
@@ -40,7 +38,7 @@ for apk in REPO_APK_DIR.iterdir():
     ).decode()
 
     package_info = next(x for x in badging.splitlines() if x.startswith("package: "))
-    package_name = PACKAGE_NAME_REGEX.search(package_info).group(1)    
+    package_name = PACKAGE_NAME_REGEX.search(package_info).group(1)
     application_icon = APPLICATION_ICON_320_REGEX.search(badging).group(1)
 
     with ZipFile(apk) as z, z.open(application_icon) as i, (
@@ -100,7 +98,6 @@ index_min_data.sort(key=lambda x: x["pkg"])
 
 with (REPO_DIR / "index.json").open("w", encoding="utf-8") as f:
     index_data_str = json.dumps(index_data, ensure_ascii=False, indent=2)
-
     print(index_data_str)
     f.write(index_data_str)
 
