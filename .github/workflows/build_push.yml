@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - '**'
       - '!**.md'
@@ -59,11 +59,11 @@ jobs:
           safe_output: false
 
         # This step is going to commit, but this will not trigger another workflow.
-        # If any changes to lib/ caused on master branch, bump the extensions that uses the modified lib.
+        # If any changes to lib/ caused on main branch, bump the extensions that uses the modified lib.
         # If any changes caused by the merge commit, skip this step because versions should already pumped with that merge.
         # But that should be avoided because our own extensions may not be bumped.
       - name: Bump extensions that use a modified lib
-        if: steps.modified-libs.outputs.any_changed == 'true' && github.repository == 'yuzono/anime-extensions'
+        if: steps.modified-libs.outputs.any_changed == 'true' && github.repository == 'felipegfa/anime-fonte-extensoes'
         env:
           COMMIT_MESSAGE: ${{ steps.set-env.outputs.LATEST_COMMIT_MESSAGE }}
         run: |
@@ -132,7 +132,7 @@ jobs:
 
       - name: Upload APKs (${{ matrix.chunk.number }})
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: github.repository == 'yuzono/anime-extensions'
+        if: github.repository == 'felipegfa/anime-fonte-extensoes'
         with:
           name: "individual-apks-${{ matrix.chunk.number }}"
           path: "**/*.apk"
@@ -144,7 +144,7 @@ jobs:
   publish:
     name: Publish extension repo
     needs: [prepare, build]
-    if: github.repository == 'yuzono/anime-extensions'
+    if: github.repository == 'felipegfa/anime-fonte-extensoes'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -179,7 +179,7 @@ jobs:
       - name: Checkout repo branch
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          repository: yuzono/aniyomi-repo
+          repository: felipegfa/anime-extensoes
           token: ${{ secrets.BOT_PAT }}
           ref: repo
           path: repo
