@@ -66,13 +66,15 @@ class RedeCanais :
     private val preferences: SharedPreferences by getPreferencesLazy()
     private val audioOptionsCache = mutableMapOf<String, List<AudioOption>>()
 
-    override val client = network.client.newBuilder()
-        .addInterceptor(VideoListBootstrapInterceptor())
-        .addInterceptor(DetailsProxy(baseUrl, ::browserUserAgent))
-        .addInterceptor(HtmlProxy(baseUrl, ::browserUserAgent))
-        .addInterceptor(ImageProxy(baseUrl))
-        .addInterceptor(SearchThumbProxy(baseUrl, ::browserUserAgent))
-        .build()
+    override val client by lazy {
+        network.client.newBuilder()
+            .addInterceptor(VideoListBootstrapInterceptor())
+            .addInterceptor(DetailsProxy(baseUrl, ::browserUserAgent))
+            .addInterceptor(HtmlProxy(baseUrl, ::browserUserAgent))
+            .addInterceptor(ImageProxy(baseUrl))
+            .addInterceptor(SearchThumbProxy(baseUrl, ::browserUserAgent))
+            .build()
+    }
 
     override fun headersBuilder(): Headers.Builder = super.headersBuilder()
         .set("User-Agent", browserUserAgent())

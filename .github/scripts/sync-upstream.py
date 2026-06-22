@@ -3,8 +3,8 @@ import subprocess
 import sys
 
 UPSTREAM_REMOTE = "upstream"
-UPSTREAM_URL = " https://github.com/yuzono/anime-extensions.git"
-UPSTREAM_BRANCH = "main"
+UPSTREAM_URL = "https://github.com/yuzono/anime-extensions.git"
+UPSTREAM_BRANCH = "master"
 SYNC_BRANCH = "sync"
 
 
