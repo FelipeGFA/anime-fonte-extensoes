@@ -23,7 +23,7 @@ class BetterAnimeIo :
     ) {
     private val contentUrl = "$baseUrl/animes"
 
-    private val extractor by lazy { BetterAnimeIoExtractor(client) }
+    private val extractor by lazy { BetterAnimeIoExtractor(client, headers) }
 
     // ============================== Popular ===============================
     override fun popularAnimeSelector() = "div#featured-titles article.item div.poster"
@@ -85,7 +85,7 @@ class BetterAnimeIo :
         return when {
             "jwplayer?source=" in url || "jwplayer/?source=" in url -> {
                 val encodedSource = url.toHttpUrl().queryParameter("source") ?: return emptyList()
-                extractor.extractVideosFromApi(encodedSource)
+                extractor.extractVideosFromBlogger(encodedSource)
             }
             else -> emptyList()
         }

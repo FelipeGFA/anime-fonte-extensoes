@@ -1,14 +1,14 @@
 package eu.kanade.tachiyomi.animeextension.pt.animeplayer
 
-import aniyomi.lib.bloggerextractor.BloggerExtractor
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.multisrc.dooplay.DooPlay
 import eu.kanade.tachiyomi.network.GET
-import keiyoushi.utils.useAsJsoup
-import kotlinx.coroutines.runBlocking
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.util.asJsoup
+import okhttp3.Headers
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -20,10 +20,13 @@ class AnimePlayer :
         "https://animeplayer.com.br",
     ) {
 
+    override fun headersBuilder() = super.headersBuilder()
+        .set("Referer", "$baseUrl/")
+
     // ============================== Popular ===============================
     override fun popularAnimeSelector() = "div#archive-content article div.poster"
 
-    override fun popularAnimeRequest(page: Int) = GET("$baseUrl/animes/")
+    override fun popularAnimeRequest(page: Int) = GET("$baseUrl/animes/", headers)
 
     override fun popularAnimeNextPageSelector() = "a > i#nextpagination"
 
@@ -36,13 +39,9 @@ class AnimePlayer :
     override fun animeDetailsParse(document: Document) = SAnime.create().apply {
         val doc = getRealAnimeDoc(document)
         val content = doc.selectFirst("div#contenedor > div.data")!!
-        doc.selectFirst("div.sheader div.poster > img")!!.let {
-            thumbnail_url = it.getImageUrl()
-            title = it.attr("alt").ifEmpty {
-                content.selectFirst("div.data > h1")!!.text()
-            }
-        }
 
+        title = content.selectFirst("div.data > h1")!!.text()
+        thumbnail_url = doc.selectFirst("div.sheader div.poster > img")!!.getImageUrl()
         genre = content.select("div.sgeneros > a")
             .eachText()
             .joinToString()
@@ -53,10 +52,8 @@ class AnimePlayer :
 
     override fun getSeasonEpisodes(season: Element): List<SEpisode> {
         val seasonName = season.selectFirst("span.title")!!.text()
-        return season.select(episodeListSelector()).mapNotNull { element ->
-            runCatching {
-                episodeFromElement(element, seasonName)
-            }.onFailure { it.printStackTrace() }.getOrNull()
+        return season.select(episodeListSelector()).map { element ->
+            episodeFromElement(element, seasonName)
         }
     }
 
@@ -64,51 +61,62 @@ class AnimePlayer :
 
     override fun episodeFromElement(element: Element, seasonName: String) = SEpisode.create().apply {
         val epNum = element.selectFirst("div.episodiotitle p")!!.text()
-            .trim()
-            .let(episodeNumberRegex::find)
-            ?.groupValues
-            ?.last() ?: "0"
+            .let(episodeNumberRegex::find)!!
+            .groupValues
+            .last()
         val href = element.selectFirst("a[href]")!!
-        episode_number = epNum.toFloatOrNull() ?: 0F
-        name = "$seasonName x Episódio $epNum"
+
+        episode_number = epNum.toFloat()
+        name = "$seasonName x Episodio $epNum"
         setUrlWithoutDomain(href.absUrl("href"))
     }
 
     // ============================ Video Links =============================
-    override val prefQualityValues = arrayOf("360p", "720p")
+    override val prefQualityDefault = "FHD"
+    override val prefQualityValues = arrayOf("FHD", "720p", "360p")
     override val prefQualityEntries = prefQualityValues
 
-    override fun videoListParse(response: Response): List<Video> {
-        val document = response.useAsJsoup()
-        val playerUrl = document
-            .selectFirst("div.playex iframe")
-            ?.absUrl("src")
-            ?.toHttpUrlOrNull()
-            ?: return emptyList()
+    override fun List<Video>.sort(): List<Video> = this
 
-        val quality = document
-            .selectFirst("span.qualityx")
-            ?.text()
-            ?.substringAfterLast(" ")
-            ?: "Default"
+    override suspend fun getVideoList(episode: SEpisode): List<Video> = client.newCall(videoListRequest(episode)).awaitSuccess().use { response ->
+        val document = response.asJsoup()
+        val quality = document.selectFirst("span.qualityx")!!.text()
+        val videos = mutableListOf<Video>()
 
-        val url = playerUrl.queryParameter("link") ?: playerUrl.toString()
-        return runBlocking { runCatching { getVideosFromURL(url, quality) }.getOrElse { emptyList() } }
-    }
-
-    private val bloggerExtractor by lazy { BloggerExtractor(client) }
-
-    private suspend fun getVideosFromURL(url: String, quality: String): List<Video> = when {
-        "cdn.animeson.com.br" in url -> {
-            listOf(
-                Video(url, quality, url, headers),
+        for ((index, element) in document.select(".player-placeholder[data-src]").withIndex()) {
+            val playerUrl = element.absUrl("data-src")
+            val videoUrl = webViewExtractor.extract(playerUrl) ?: continue
+            videos += videoFromPlayer(
+                playerUrl = playerUrl,
+                title = "Player ${index + 1} - $quality",
+                videoUrl = videoUrl,
             )
         }
 
-        "blogger.com" in url -> bloggerExtractor.videosFromUrl(url, headers)
-
-        else -> emptyList()
+        videos
     }
+
+    override fun videoListParse(response: Response): List<Video> = throw UnsupportedOperationException()
+
+    private val webViewExtractor by lazy { WebViewVideoExtractor(headers.withReferer("$baseUrl/")) }
+
+    private fun videoFromPlayer(playerUrl: String, title: String, videoUrl: String) = Video(
+        url = playerUrl,
+        quality = title,
+        videoUrl = videoUrl,
+        headers = headers.withReferer(playerUrl.toRootUrl()),
+    )
+
+    private fun String.toRootUrl() = toHttpUrl().newBuilder()
+        .encodedPath("/")
+        .query(null)
+        .fragment(null)
+        .build()
+        .toString()
+
+    private fun Headers.withReferer(referer: String) = newBuilder()
+        .set("Referer", referer)
+        .build()
 
     // ============================== Filters ===============================
     override fun genresListSelector() = "ul.genres a"

@@ -14,7 +14,7 @@ class DarkMahou :
     AnimeStream(
         "pt-BR",
         "DarkMahou (Torrent)",
-        "https://darkmahou.org",
+        "https://darkmahou.io",
     ) {
     override fun headersBuilder() = super.headersBuilder().add("Referer", baseUrl)
 

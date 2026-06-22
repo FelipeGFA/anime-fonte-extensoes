@@ -110,10 +110,10 @@ data class SeasonDto(
 data class EpisodeSchemaDto(
     @SerialName("@type")
     val type: String? = null,
-    val episodeNumber: String,
+    val episodeNumber: String = "0",
     val name: String? = null,
-    val datePublished: String,
-    val url: String,
+    val datePublished: String? = null,
+    val url: String = "",
 )
 
 @Serializable

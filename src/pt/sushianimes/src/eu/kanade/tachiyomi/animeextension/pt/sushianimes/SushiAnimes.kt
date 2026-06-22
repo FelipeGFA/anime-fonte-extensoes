@@ -182,20 +182,28 @@ class SushiAnimes : ParsedAnimeHttpSource() {
         val document = response.useAsJsoup()
 
         val id = document.selectFirst("[data-embed]")?.attr("data-embed") ?: return emptyList()
+        val token = document.selectFirst("meta[name=csrf-token]")?.attr("content") ?: ""
 
         val formBody = FormBody.Builder()
             .add("id", id)
+            .add("_TOKEN", token)
             .build()
 
-        val request = POST("$baseUrl/ajax/embed", headers, formBody)
+        val embedHeaders = headers.newBuilder()
+            .add("X-CSRF-TOKEN", token)
+            .add("X-Requested-With", "XMLHttpRequest")
+            .build()
+
+        val request = POST("$baseUrl/ajax/embed", embedHeaders, formBody)
         val body = client.newCall(request).execute().bodyString()
 
-        val videoUrl = body.substringAfterLast("playerEmbed", "")
-            .substringAfter("\"")
+        val videoUrl = body.substringAfter("playerEmbed = \"", "")
             .substringBefore("\"")
             .replace("\\", "")
 
-        return listOf(Video(videoUrl, "Sushi Animes", videoUrl))
+        if (videoUrl.isEmpty()) return emptyList()
+
+        return listOf(Video(videoUrl, "Sushi Animes", videoUrl, headers = headers))
     }
 
     override fun videoListSelector(): String = throw UnsupportedOperationException()

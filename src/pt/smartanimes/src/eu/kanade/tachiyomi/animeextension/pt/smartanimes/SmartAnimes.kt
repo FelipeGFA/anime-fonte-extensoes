@@ -4,16 +4,15 @@ import eu.kanade.tachiyomi.animeextension.pt.smartanimes.extractors.SmartAnimesE
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.multisrc.animestream.AnimeStream
-import keiyoushi.utils.parallelCatchingFlatMapBlocking
 import keiyoushi.utils.useAsJsoup
-import okhttp3.HttpUrl.Companion.toHttpUrl
+import kotlinx.coroutines.runBlocking
 import okhttp3.Response
 
 class SmartAnimes :
     AnimeStream(
         "pt-BR",
         "SmartAnimes",
-        "https://smartanimes.net",
+        "https://smartanimes.com",
     ) {
     override fun headersBuilder() = super.headersBuilder().apply {
         add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
@@ -29,22 +28,23 @@ class SmartAnimes :
     override fun videoListParse(response: Response): List<Video> {
         val items = response.useAsJsoup().select(videoListSelector())
 
-        return items.parallelCatchingFlatMapBlocking { element ->
-            val name = element.selectFirst(".q")!!.text().trim()
-            val quality = element.selectFirst(".w")!!.text().trim()
-            val url = element.selectFirst("a")!!.attr("href")
-            getVideoList(url, "$name - $quality")
+        return runBlocking {
+            items.mapNotNull { element ->
+                runCatching {
+                    val name = element.selectFirst(".q")!!.text().trim()
+                    val quality = element.selectFirst(".w")!!.text().trim()
+                    val url = element.selectFirst("a")!!.attr("href")
+                    getVideoList(url, "$name - $quality")
+                }.getOrNull()
+            }.flatten()
         }
     }
 
     private val smartanimesExtractor by lazy { SmartAnimesExtractor(client, headers) }
 
-    override suspend fun getVideoList(url: String, name: String): List<Video> {
-        val host = baseUrl.toHttpUrl().host
-        return when {
-            host in url -> smartanimesExtractor.videosFromUrl(url, name)
-            else -> emptyList()
-        }
+    override suspend fun getVideoList(url: String, name: String): List<Video> = when {
+        "smartanimes" in url -> smartanimesExtractor.videosFromUrl(url, name)
+        else -> emptyList()
     }
 
     // ============================= Utilities ==============================

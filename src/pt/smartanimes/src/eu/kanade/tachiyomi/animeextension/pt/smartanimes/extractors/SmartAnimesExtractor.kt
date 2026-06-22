@@ -49,7 +49,7 @@ class SmartAnimesExtractor(private val client: OkHttpClient, private val headers
 
         val sourceUrl =
             noRedirectClient.newCall(POST(options.soralink_ajaxurl, newHeaders, formBody))
-                .awaitSuccess().use { it.header("location") }
+                .execute().use { it.header("location") }
                 ?: return emptyList()
 
         return when {
@@ -61,7 +61,7 @@ class SmartAnimesExtractor(private val client: OkHttpClient, private val headers
     }
 
     @Serializable
-    data class ItemDto(
+    class ItemDto(
         val token: String,
         val id: Int,
         val time: Int,
@@ -73,7 +73,7 @@ class SmartAnimesExtractor(private val client: OkHttpClient, private val headers
     )
 
     @Serializable
-    data class OptionsDto(
+    class OptionsDto(
         val soralink_z: String,
         val soralink_ajaxurl: String,
     )

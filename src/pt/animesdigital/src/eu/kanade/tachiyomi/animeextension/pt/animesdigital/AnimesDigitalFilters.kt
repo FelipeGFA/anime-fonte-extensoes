@@ -85,7 +85,7 @@ class AnimesDigitalFilters(
     private fun filtersParse(document: Document): AnimeFilterList {
         val genres = document.select("li.filter_genre")
             .mapNotNull { element ->
-                val name = element.text().trim()
+                val name = element.text()
                 val value = element.attr("data-value")
                 if (name.isNotEmpty() && value.isNotEmpty()) {
                     Pair(name, value)

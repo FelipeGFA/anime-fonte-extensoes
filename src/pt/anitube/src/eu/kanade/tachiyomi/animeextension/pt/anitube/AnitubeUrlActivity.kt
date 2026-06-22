@@ -1,16 +1,11 @@
 package eu.kanade.tachiyomi.animeextension.pt.anitube
 
 import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import kotlin.system.exitProcess
 
-/**
- * Springboard that accepts https://anitube.vip/<type>/<slug> intents
- * and redirects them to the main Aniyomi process.
- */
 class AnitubeUrlActivity : Activity() {
 
     private val tag = javaClass.simpleName
@@ -26,7 +21,7 @@ class AnitubeUrlActivity : Activity() {
 
         try {
             startActivity(mainIntent)
-        } catch (e: ActivityNotFoundException) {
+        } catch (e: Throwable) {
             Log.e(tag, "Unable to launch activity", e)
         }
 

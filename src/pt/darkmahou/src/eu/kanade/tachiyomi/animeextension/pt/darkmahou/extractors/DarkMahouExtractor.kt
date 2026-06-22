@@ -13,21 +13,43 @@ class DarkMahouExtractor(private val client: OkHttpClient, private val headers: 
 
         val fragment = url.toHttpUrl().fragment
 
-        val soraurls = doc.select("div.mctnx div.soraddl .sorattl h3").find {
+        val soraddl = doc.select("div.mctnx div.soraddl .sorattl h3").find {
             it.text() == fragment
-        }?.closest(".soraddl")?.select(".soraurl") ?: return emptyList()
+        }?.closest(".soraddl") ?: return emptyList()
 
-        return soraurls.flatMap {
+        val videos = mutableListOf<Video>()
+
+        // 1. Padrão antigo: divs com a classe .soraurl
+        soraddl.select(".soraurl").forEach {
             val prefix = if (it.text().lowercase().contains("dublado")) {
                 "Dublado"
             } else {
                 "Legendado"
             }
-            it.select(".slink a").map {
-                val videoUrl = it.attr("href")
-                val quality = it.text().trim()
-                Video(videoUrl, "$prefix - $quality", videoUrl)
+            it.select(".slink a").forEach { link ->
+                var videoUrl = link.attr("href")
+                if (videoUrl.startsWith("magnet:") && !videoUrl.contains("&index=")) {
+                    videoUrl += "&index=0"
+                }
+                val quality = link.text().trim()
+                videos.add(Video(videoUrl, "$prefix - $quality", videoUrl))
             }
         }
+
+        // 2. Novo padrão: tabelas (muito usado para magnets e batches longos)
+        soraddl.select(".content table tr").forEach { row ->
+            val prefix = row.selectFirst(".reso .res")?.text()?.trim()?.removeSuffix(">>") ?: ""
+            row.select(".slink a").forEach { link ->
+                var videoUrl = link.attr("href")
+                if (videoUrl.startsWith("magnet:") && !videoUrl.contains("&index=")) {
+                    videoUrl += "&index=0"
+                }
+                val quality = link.text().trim()
+                val name = if (prefix.isNotEmpty()) "$prefix - $quality" else quality
+                videos.add(Video(videoUrl, name, videoUrl))
+            }
+        }
+
+        return videos
     }
 }

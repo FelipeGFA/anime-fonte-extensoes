@@ -11,14 +11,18 @@ import okhttp3.OkHttpClient
 class SendNowExtractor(private val client: OkHttpClient, private val headers: Headers) {
     suspend fun videosFromUrl(url: String, name: String): List<Video> {
         // Client hints from: https://github.com/keiyoushi/extensions-source/blob/8f70beda06a70f84c79d793367fbdf6b9ea09b5a/src/pt/mangastop/src/eu/kanade/tachiyomi/extension/pt/mangastop/ClientHintsInterceptor.kt#L27
-        val userAgent = headers["User-Agent"]
-            ?: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36"
+        var userAgent = headers["User-Agent"]
+            ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
 
-        val chromeVersion = CHROME_REGEX.find(userAgent)?.groupValues?.get(1) ?: "143"
+        if (!userAgent.contains("Chrome")) {
+            userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+        }
+
+        val chromeVersion = CHROME_REGEX.find(userAgent)?.groupValues?.get(1) ?: "133"
         val isMobile = userAgent.contains("Android") || userAgent.contains("Mobile")
 
         val secChUa =
-            "\"Google Chrome\";v=\"$chromeVersion\", \"Chromium\";v=\"$chromeVersion\", \"Not A(Brand\";v=\"24\""
+            "\"Google Chrome\";v=\"$chromeVersion\", \"Chromium\";v=\"$chromeVersion\", \"Not-A.Brand\";v=\"24\""
 
         val platform = when {
             userAgent.contains("Windows") -> "\"Windows\""
@@ -52,7 +56,9 @@ class SendNowExtractor(private val client: OkHttpClient, private val headers: He
 
         val document = client.newCall(GET(url, newHeaders)).awaitSuccess().useAsJsoup()
 
-        val source = document.selectFirst("source") ?: return emptyList()
+        val source = document.selectFirst("source") ?: return listOf(
+            Video(url, "$name (Bloqueado por Cloudflare - Abra no Navegador)", url, newHeaders),
+        )
 
         val videoUrl = source.attr("src")
 
