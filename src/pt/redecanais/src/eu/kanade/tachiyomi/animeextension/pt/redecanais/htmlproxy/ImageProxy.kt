@@ -29,7 +29,7 @@ class ImageProxy(
     }
 
     private fun Request.shouldProxyImage(): Boolean {
-        if (method != "GET" || (url.host != baseHost && url.host !in LEGACY_HOSTS)) return false
+        if (method != "GET" || (url.host != baseHost && !url.host.startsWith("redecanais."))) return false
 
         val path = url.encodedPath.lowercase(Locale.ROOT)
         if (path == "/__rc_thumb") return false
@@ -56,7 +56,6 @@ class ImageProxy(
 
     private companion object {
         const val IMAGE_WAIT_TIMEOUT_MS = 15_000L
-        val LEGACY_HOSTS = setOf("redecanais.nexus", "redecanais.rodeo")
         val IMAGE_EXTENSIONS = setOf(".jpg", ".jpeg", ".png", ".webp", ".gif")
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.SharedPreferences
 import android.util.Log
 import android.webkit.WebSettings
+import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.animeextension.pt.redecanais.detailsproxy.DetailsProxy
@@ -47,7 +48,7 @@ class RedeCanais :
 
     override val name = "Rede Canais"
 
-    override val baseUrl = "https://redecanais.pet"
+    override val baseUrl get() = preferences.getString(PREF_DOMAIN_KEY, PREF_DOMAIN_DEFAULT)!!
 
     override val lang = "pt-BR"
 
@@ -250,6 +251,22 @@ class RedeCanais :
     // ============================== Settings ==============================
 
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
+        EditTextPreference(screen.context).apply {
+            key = PREF_DOMAIN_KEY
+            title = PREF_DOMAIN_TITLE
+            setDefaultValue(PREF_DOMAIN_DEFAULT)
+            summary = getDomainPrefSummary()
+
+            setOnPreferenceChangeListener { _, newValue ->
+                runCatching {
+                    val value = (newValue as String).trim().ifBlank { PREF_DOMAIN_DEFAULT }
+                    preferences.edit().putString(key, value).commit().also {
+                        summary = getDomainPrefSummary()
+                    }
+                }.getOrDefault(false)
+            }
+        }.also(screen::addPreference)
+
         ListPreference(screen.context).apply {
             key = PREFERRED_AUDIO_KEY
             title = PREFERRED_AUDIO_TITLE
@@ -347,6 +364,8 @@ class RedeCanais :
     }
 
     private fun proxiedVideoUrl(url: String): String = videoProxy.proxiedUrl(url)
+
+    private fun getDomainPrefSummary(): String = preferences.getString(PREF_DOMAIN_KEY, PREF_DOMAIN_DEFAULT)!!
 
     private fun videoHeaders(): Headers = Headers.headersOf(
         "User-Agent",
@@ -514,6 +533,9 @@ class RedeCanais :
         private const val PREFERRED_AUDIO_KEY = "preferred_audio"
         private const val PREFERRED_AUDIO_TITLE = "Áudio preferido"
         private const val PREFERRED_AUDIO_DEFAULT = SUBBED_AUDIO
+        private const val PREF_DOMAIN_KEY = "preferred_domain"
+        private const val PREF_DOMAIN_TITLE = "Domínio atual (requer reinicialização da app)"
+        private const val PREF_DOMAIN_DEFAULT = "https://redecanais.plus"
         private const val DUBBED_AUDIO_PARAM = "rc_dublado"
         private const val SUBBED_AUDIO_PARAM = "rc_legendado"
         private const val ACCEPT_LANGUAGE = "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7"
