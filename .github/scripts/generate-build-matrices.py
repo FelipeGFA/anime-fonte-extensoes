@@ -184,13 +184,6 @@ def get_module_list(ref: str) -> tuple[list[str], list[str]]:
     modules.update([f":src:{lang}:{extension}" for lang, extension in extensions])
     deleted.update([f"{lang}.{extension}" for lang, extension in extensions])
 
-    if os.getenv("IS_PR_CHECK") != "true":
-        with Path(".github/always_build.json").open() as always_build_file:
-            always_build = json.load(always_build_file)
-        for extension in always_build:
-            modules.add(":src:" + extension.replace(".", ":"))
-            deleted.add(extension)
-
     return list(modules), list(deleted)
 
 def get_all_modules() -> tuple[list[str], list[str]]:
